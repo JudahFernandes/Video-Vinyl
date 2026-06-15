@@ -23,7 +23,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 function App() {
   const [appState, setAppState] = useState('PLAYING');
-  const [setupData, setSetupData] = useState({ videoUrl: '/assets/default_video.webm', youtubeId: null, title: null });
+  const [setupData, setSetupData] = useState({ videoUrl: '/assets/default_video.webm', youtubeId: null, title: null, cropData: null });
   const [clipBounds, setClipBounds] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -407,6 +407,7 @@ function App() {
     if (!isLeftShelfOpen) return; // blocked when shelf is collapsed
     const shelfTrack = queue[index];
     if (!shelfTrack) { setHoveredSlotIndex(null); return; }
+    if (!setupData.youtubeId) { setHoveredSlotIndex(null); return; }
     const currentTrack = { youtubeId: setupData.youtubeId, title: setupData.title };
     setQueue(prev => { const next = [...prev]; next[index] = currentTrack; return next; });
     setSetupData(prev => ({ ...prev, youtubeId: shelfTrack.youtubeId, title: shelfTrack.title }));
@@ -442,8 +443,8 @@ function App() {
     setShowMusicInput(false);
   };
 
-  const handleChangeVideo = ({ videoUrl, clipBounds }) => {
-    setSetupData(prev => ({ ...prev, videoUrl }));
+  const handleChangeVideo = ({ videoUrl, clipBounds, cropData }) => {
+    setSetupData(prev => ({ ...prev, videoUrl, cropData }));
     setClipBounds(clipBounds);
     setShowVideoInput(false);
     setAppState('PLAYING');
@@ -514,6 +515,7 @@ function App() {
               <TVDisplay
                 src={setupData.videoUrl}
                 clipBounds={clipBounds}
+                cropData={setupData.cropData}
                 videoRef={videoRef}
                 volume={volume}
                 onVolumeChange={handleVolumeChange}
@@ -685,7 +687,7 @@ function App() {
                   animate={{ opacity: showControls ? 1 : 0 }}
                   transition={{ duration: 0.5 }}
                   className="absolute select-none pointer-events-none"
-                  style={{ left: '10px', top: '40px' }}
+                  style={{ left: '10px', top: '20px' }}
                 >
                   <span className="font-brittany text-lg text-white/80 tracking-wide drop-shadow-md block">
                     {setupData?.title || 'No Track Playing'}

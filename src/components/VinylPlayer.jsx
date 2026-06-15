@@ -12,35 +12,27 @@ export default function VinylPlayer({ isPlaying, currentTime, duration, youtubeI
     // Rotation constants
     const DEGREES_PER_SEC = 60;
 
-    // Initialize rotation
-    const rotation = useMotionValue(currentTime * DEGREES_PER_SEC);
+    // Initialize rotation purely as a visual state
+    const rotation = useMotionValue(0);
 
-    // Smooth rAF-based rotation — avoids the jerk caused by onTimeUpdate firing ~1/s
+    // Smooth rAF-based rotation
     const rafRef = useRef(null);
-    const lastWallTime = useRef(null);   // wall-clock timestamp of last sync
-    const baseRotation = useRef(currentTime * DEGREES_PER_SEC); // rotation at last sync
+    const lastWallTime = useRef(null);
 
-    // Resync whenever currentTime ticks from YouTube (only while playing to avoid snap-back on pause)
+    // Re-anchor on play resume so elapsed time is calculated cleanly
     useEffect(() => {
-        if (isDragging || !isPlaying) return;
-        baseRotation.current = currentTime * DEGREES_PER_SEC;
-        lastWallTime.current = performance.now();
-    }, [currentTime, isDragging, isPlaying]);
-
-    // Re-anchor on play resume so stale paused wall-time doesn't cause a jump
-    useEffect(() => {
-        if (isPlaying) {
-            baseRotation.current = rotation.get();
+        if (isPlaying && !isDragging) {
             lastWallTime.current = performance.now();
         }
-    }, [isPlaying, rotation]);
+    }, [isPlaying, isDragging]);
 
     // rAF loop: advance rotation by real elapsed time while playing
     const tick = useCallback(() => {
         if (isPlaying && !isDragging) {
             const now = performance.now();
             const elapsed = (now - (lastWallTime.current ?? now)) / 1000; // seconds
-            rotation.set(baseRotation.current + elapsed * DEGREES_PER_SEC);
+            rotation.set(rotation.get() + elapsed * DEGREES_PER_SEC);
+            lastWallTime.current = now;
         }
         rafRef.current = requestAnimationFrame(tick);
     }, [isPlaying, isDragging, rotation]);
@@ -53,6 +45,7 @@ export default function VinylPlayer({ isPlaying, currentTime, duration, youtubeI
     const lastAngle = useRef(0);
     const lastTimestamp = useRef(0);
     const lastRot = useRef(0);
+    const scrubTime = useRef(0);
     const activeHoverIndex = useRef(null);
 
     const onPan = (event, info) => {
@@ -84,7 +77,10 @@ export default function VinylPlayer({ isPlaying, currentTime, duration, youtubeI
         lastTimestamp.current = now;
         lastRot.current = newRotation;
 
-        const newTime = Math.max(0, newRotation / DEGREES_PER_SEC);
+        scrubTime.current += delta / DEGREES_PER_SEC;
+        const newTime = Math.max(0, Math.min(scrubTime.current, duration || Infinity));
+        scrubTime.current = newTime;
+
         if (onSeek) onSeek(newTime);
     };
 
@@ -96,6 +92,7 @@ export default function VinylPlayer({ isPlaying, currentTime, duration, youtubeI
         lastAngle.current = Math.atan2(info.point.y - centerY, info.point.x - centerX) * (180 / Math.PI);
         lastTimestamp.current = Date.now();
         lastRot.current = rotation.get();
+        scrubTime.current = currentTime; // Anchor the relative scrub time
         playScratch(0.5);
     };
 
@@ -137,7 +134,7 @@ export default function VinylPlayer({ isPlaying, currentTime, duration, youtubeI
                 dragSnapToOrigin={true}
                 dragElastic={0.2}
                 dragMomentum={false}
-                whileDrag={{ scale: 1.1, rotate: 5, zIndex: 100 }}
+                whileDrag={{ scale: 1.1, zIndex: 100 }}
                 onDrag={(e, info) => {
                     if (isPlaying) return;
                     // Collision detection

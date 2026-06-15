@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import clsx from 'clsx';
 
 
-export default function TVDisplay({ src, clipBounds, className, videoRef, volume, onVolumeChange }) {
+export default function TVDisplay({ src, clipBounds, cropData, className, videoRef, volume, onVolumeChange }) {
     const hasInitialized = useRef(false);
 
     useEffect(() => {
@@ -63,25 +63,53 @@ export default function TVDisplay({ src, clipBounds, className, videoRef, volume
                             className="w-full h-full object-cover brightness-110 contrast-85 sepia-[.20] saturate-80 pointer-events-none"
                         />
                     ) : (
-                        <video
-                            ref={(el) => {
-                                if (videoRef) videoRef.current = el;
-                                if (el && !hasInitialized.current) {
-                                    hasInitialized.current = true;
-                                    el.muted = true; // set imperatively, not as HTML attribute
-                                    el.play().catch(() => {});
-                                }
-                            }}
-                            src={src}
-                            autoPlay
-                            loop={!clipBounds}
-                            playsInline
-                            preload="auto"
-                            onTimeUpdate={handleTimeUpdate}
-                            onLoadedMetadata={handleLoadedMetadata}
-                            onEnded={handleEnded}
-                            className="w-full h-full object-cover brightness-110 contrast-85 sepia-[.20] saturate-80 pointer-events-none"
-                        />
+                        <div style={{
+                            position: 'absolute',
+                            inset: 0,
+                            overflow: 'hidden',
+                        }}>
+                            <div style={{
+                                position: 'absolute',
+                                top: '50%',
+                                left: '50%',
+                                width: '100%',
+                                height: '100%',
+                                transform: `translate(-50%, -50%)`,
+                                transformOrigin: 'center center',
+                                pointerEvents: 'none',
+                            }}>
+                                <video
+                                    ref={(el) => {
+                                        if (videoRef) videoRef.current = el;
+                                        if (el && !hasInitialized.current) {
+                                            hasInitialized.current = true;
+                                            el.muted = true; // set imperatively, not as HTML attribute
+                                            el.play().catch(() => {});
+                                        }
+                                    }}
+                                    src={src}
+                                    autoPlay
+                                    loop={!clipBounds}
+                                    playsInline
+                                    preload="auto"
+                                    onTimeUpdate={handleTimeUpdate}
+                                    onLoadedMetadata={handleLoadedMetadata}
+                                    onEnded={handleEnded}
+                                    className="brightness-110 contrast-85 sepia-[.20] saturate-80 pointer-events-none"
+                                    style={{
+                                        position: 'absolute',
+                                        left: '50%',
+                                        top: '50%',
+                                        width: `${(cropData?.widthPct ?? 1) * 100}%`,
+                                        height: `${(cropData?.heightPct ?? 1) * 100}%`,
+                                        transform: `translate(-50%, calc(-50% + ${(cropData?.yPct ?? 0) * 100}%))`,
+                                        objectFit: 'fill',
+                                        display: 'block',
+                                        pointerEvents: 'none',
+                                    }}
+                                />
+                            </div>
+                        </div>
                     )}
                     <video
                         src="/assets/VintageLayer.webm"

@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Upload, X } from 'lucide-react';
 import clsx from 'clsx';
 import VideoClipper from './VideoClipper';
+import VideoCropPreview from './VideoCropPreview';
 
 export default function VideoInputModal({ onSelect, onClose }) {
     const [videoFile, setVideoFile] = useState(null);
-    const [showClipper, setShowClipper] = useState(false);
+    const [step, setStep] = useState('upload'); // 'upload' | 'clip' | 'crop'
+    const [clipBounds, setClipBounds] = useState(null);
     const [videoDuration, setVideoDuration] = useState(0);
     const [error, setError] = useState('');
 
@@ -21,27 +23,36 @@ export default function VideoInputModal({ onSelect, onClose }) {
                 URL.revokeObjectURL(videoUrl);
                 setVideoDuration(video.duration);
                 setVideoFile(file);
-                setShowClipper(true);
+                setStep('clip');
             };
 
             video.src = videoUrl;
         }
     };
 
-    const handleClipSelected = (clipBounds) => {
+    const handleClipSelected = (bounds) => {
+        setClipBounds(bounds);
+        setStep('crop');
+    };
+
+    const handleCropConfirm = (cropData) => {
         const videoUrl = URL.createObjectURL(videoFile);
-        onSelect({ videoUrl, clipBounds });
+        onSelect({ videoUrl, clipBounds, cropData });
     };
 
     const handleCancelClip = () => {
-        setShowClipper(false);
+        setStep('upload');
         setVideoFile(null);
         setVideoDuration(0);
     };
 
+    const handleCancelCrop = () => {
+        setStep('clip');
+    };
+
     return (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm text-white p-6">
-            {!showClipper ? (
+            {step === 'upload' && (
                 <div className="max-w-md w-full space-y-8 bg-nos-dark/90 p-8 rounded-2xl border border-white/10 shadow-2xl relative">
                     <button
                         onClick={onClose}
@@ -81,11 +92,19 @@ export default function VideoInputModal({ onSelect, onClose }) {
                         {error && <p className="text-red-400 text-sm text-center animate-pulse">{error}</p>}
                     </div>
                 </div>
-            ) : (
+            )}
+            {step === 'clip' && (
                 <VideoClipper
                     videoFile={videoFile}
                     onClipSelected={handleClipSelected}
                     onCancel={handleCancelClip}
+                />
+            )}
+            {step === 'crop' && (
+                <VideoCropPreview
+                    videoUrl={URL.createObjectURL(videoFile)}
+                    onConfirm={handleCropConfirm}
+                    onCancel={handleCancelCrop}
                 />
             )}
         </div>
